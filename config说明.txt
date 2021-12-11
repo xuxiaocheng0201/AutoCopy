@@ -1,0 +1,99 @@
+GET_hwndDOS_LEVEL:
+* GET_hwndDOS_LEVEL==0: use hwndDOS!=NULL
+* GET_hwndDOS_LEVEL==1: use hwndDOS!=NULL and GetLastError==0
+* GET_hwndDOS_LEVEL==2: use hwndDOS!=NULL and ask for the user
+* GET_hwndDOS_LEVEL==3: use hwndDOS!=NULL, GetLastError==0 and then ask for the user
+
+COPY_MODE:
+* abs(COPY_MODE)==1: Use pthread with xcopy
+* abs(COPY_MODE)==2: Use pthread with xcopy after xcopy
+* abs(COPY_MODE)==3: Use pthread with xcopy before xcopy
+* abs(COPY_MODE)==4: Use pthread with CopyFile() (include <windows.h>)
+* abs(COPY_MODE)==5: Use pthread with CopyFile() (include <windows.h>) after xcopy
+* abs(COPY_MODE)==6: Use pthread with CopyFile() (include <windows.h>) before xcopy
+* abs(COPY_MODE)==7: Use pthread with copy_file() (include "head_libs/copy_file.h")
+* abs(COPY_MODE)==8: Use pthread with copy_file() (include "head_libs/copy_file.h") after xcopy
+* abs(COPY_MODE)==9: Use pthread with copy_file() (include "head_libs/copy_file.h") before xcopy
+* abs(COPY_MODE)==10: Only use xcopy
+* COPY_MODE>=0: get file list (COPY_MODE==0: only get file list)
+
+PS: 首次运行会自动生成config.txt，默认配置见附录。
+建议运行个几秒然后就关掉黑框，调完config.txt后再重新启动
+
+附录：
+未修改过的默认config.txt：
+name: input
+note: 复制文件的路径。如果USE_USB_SERIAL_INSTREAT_OF_TIMES为0，则程序会自动在input/ac/AutoCopy/This_folder.txt文件中保存[times]信息，请勿删除此文件！（默认隐藏+系统+只读）（请注意路径的合法性，必须使用绝对路径，末尾不带/或\\）
+type: S
+value: A:
+
+name: output
+note: 输出文件的路径。会在output/AutoCopy.txt保存下一个新文件夹数。具体U盘文件会复制至output/[times]。（注意！！！此路径不能含有空格等字符，否则会出错，导致文件混乱，建议使用_字符或首字母大写代替。请注意路径的合法性，必须使用绝对路径，末尾不带/或\\）
+type: S
+value: C:\\UBackUp\\temp
+
+name: GET_hwndDOS_LEVEL
+note: 获取hwndDOS（控制台句柄）的检查级别（此部分详见config说明.txt）
+type: I
+value: 2
+
+name: dis
+note: 程序运行时是否隐藏。（false：不隐藏；true：隐藏）
+type: S
+value: false
+
+name: MAX_CPU_USEAGE
+note: CPU占用最小值。当CPU占用率（百分制）大于MAX_CPU_USEAGE时，就会减少NOW_PTHREAD，即减少最多线程数，减缓复制速度，防止电脑过卡操作不流畅（最大值为100，最小值为0）
+type: U
+value: 80
+
+name: MIN_CPU_USEAGE
+note: CPU占用最大值。当CPU占用率（百分制）小于MIN_CPU_USEAGE时，就会增大NOW_PTHREAD，即增加最多线程数，加快复制速度，尽可能使用CPU（最大值为100，最小值为0）
+type: U
+value: 80
+
+name: MAX_PTHREAD
+note: 最大线程数。NOW_PTHREAD的最大值不超过MAX_PTHREAD（最小值为NOW_PTHREAD）
+type: U
+value: 10
+
+name: MIN_PTHREAD
+note: 最小线程数。NOW_PTHREAD的最小值不超过MIN_PTHREAD（最大值为NOW_PTHREAD，最小值为0）
+type: U
+value: 0
+
+name: NOW_PTHREAD
+note: 程序启动时的默认线程数。如果程序启动Change_NOW_PTHREAD_base_on_CpuUseage线程失败，就会固定使用NOW_PTHREAD作为运行线程数（最大值为MAX_PTHREAD，最小值为MIN_PTHREAD）
+type: U
+value: 10
+
+name: TIME_OF_WAIT_CPU
+note: 更新CPU占用率的时间间隔。Change_NOW_PTHREAD_base_on_CpuUseage线程的更新时间（不建议过小，可能会出现除法BUG；不建议太大，程序退出时需要等待此线程先退出）
+type: U
+value: 1000
+
+name: TIME_OF_CREATE_PTHREAD
+note: 创建进程组的等待时间（当NOW_PTHREAD不为0时等待）。单位：毫秒(ms)（1000ms=1s）（最小值为0）
+type: U
+value: 10
+
+name: USE_USB_SERIAL_INSTEAT_OF_TIMES
+note: 是否使用U盘特征码代替写入U盘的[times]。警告：未完成功能！！！（true：使用；false：不使用）
+type: B
+value: false
+
+name: TIME_OF_DETECT_INTERVAL
+note: 检测U盘是否插入或拔出的时间间隔。单位：毫秒(ms)（1000ms=1s）（最小值为0）
+type: U
+value: 10000
+
+name: SORT_LIST
+note: 是否给list文件排序（true：需要；false：不需要）
+type: B
+value: false
+
+name: COPY_MODE
+note: 复制文件的模式。（此部分详见config说明.txt）
+type: I
+value: 7
+
