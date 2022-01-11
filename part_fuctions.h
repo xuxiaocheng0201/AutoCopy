@@ -133,8 +133,6 @@ inline void UPDATE_CHECK()
 	}
 	print("INFO","Unzip update.zip to folder update.");
 	system("unzip.exe update.zip -d update");
-	print("INFO","Run update.bat.");
-	system("update.bat");
 	print("INFO","Run update.exe. Now exit this process.");
 	ShellExecute(NULL,"open","update\\update","","update",!disappear);
 	FreeLibrary(urlmon_dll);
