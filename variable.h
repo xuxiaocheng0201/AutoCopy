@@ -1,3 +1,23 @@
+/***In version check***/
+const string VERSION="1.0.1";
+const unsigned int VERSION_ID=10001;	//01 00 01
+
+const LPCWSTR update_path=L"";
+const LPCWSTR unzip_path=L"";
+
+unsigned int newest_version_id=VERSION_ID;
+string newest_version_url="unknow";
+unsigned int recommended_version_id=VERSION_ID;
+string recommended_version_url="unknow";
+
+bool load_urlmon_dll_succeed=0;
+HINSTANCE urlmon_dll;
+typedef int(*DownloadFunction)(LPUNKNOWN,LPCWSTR,LPCWSTR,DWORD,LPBINDSTATUSCALLBACK);
+DownloadFunction DownloadFromURLToFile;
+
+Configuration update_config;
+
+
 /***In Configuration***/
 
 Configuration config;
@@ -14,6 +34,9 @@ unsigned int MAX_PTHREAD=10;
 unsigned int MIN_PTHREAD=0;
 
 bool USE_USB_SERIAL_INSTEAT_OF_TIMES=0;
+string LOG_LEVEL="ALL";
+
+bool version_use_newest=0;
 
 int GET_hwndDOS_LEVEL=2;
 /*
@@ -39,7 +62,7 @@ int COPY_MODE=7;
 bool SORT_LIST=0;
 
 string input="A:",output="C:\\UBackUp\\temp";
-bool dis=0;
+bool disappear=0,now_dis=disappear;
 
 
 /***In process***/
@@ -48,11 +71,10 @@ bool input_is_u=1;
 bool folder_isnot_exist=1,EXITS=0;
 HWND hwndDOS=NULL;
 unsigned int numbers=1,times=numbers;
-vector<string>getFiles_all;
-	//				path        size       md5    sha1
-vector<vector<pair<string,pair<size_t,pair<string,string> > > > >all;
+vector<string>files_all;
+	//				path             size   time     md5
+vector<vector<pair<string,pair<pair<size_t,string>,string> > > >all;
 	//all[0]=temp  all[n]=folder_n
-map<pair<string,string>,bool>copied;
 vector<string>need;
 map<string,bool>need_f;
 get_cpu_useage getCpuUseage;

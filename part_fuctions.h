@@ -1,4 +1,7 @@
 /***define***/
+inline void ENVIRONMENT_PREPARE();
+inline void UPDATE_CHECK();
+inline void CHECK_OTHER_RUNNING();
 inline void GET_HWNDDOS();
 inline void GET_NUMBERS();
 inline void GET_TIMES();
@@ -9,6 +12,150 @@ inline void COMPAIE_FILES_LISTS();
 inline void COPY_FILES_LISTS();
 
 /***fuction***/
+inline void ENVIRONMENT_PREPARE()
+{
+	std::ios::sync_with_stdio(false);
+	system("clear.bat");
+	system("md log");
+	system("md lists");
+	system("cls");
+	SYSTEMTIME LogCreateTime;
+	GetLocalTime(&LogCreateTime);
+	log_path="log\\log(Year"+turn_string(LogCreateTime.wYear)+"Month"+turn_string(LogCreateTime.wMonth)+"Week"+turn_string(LogCreateTime.wDayOfWeek)+"Day"+turn_string(LogCreateTime.wDay)+"Hour"+turn_string(LogCreateTime.wHour)+"Minute"+turn_string(LogCreateTime.wMinute)+"Second"+turn_string(LogCreateTime.wSecond)+"Millisecond"+turn_string(LogCreateTime.wMilliseconds)+").txt";
+	config_path="config.txt";
+	disk_information_temp_delete=0;
+	SetLastError(0);
+	Sleep(500);
+	return;
+}
+
+inline void UPDATE_CHECK()
+{
+	if(!file_exists("urlmon.dll"))
+	{
+		print("WARN","[UPDATE_CHECK]Couldn't find urlmon.dll. Skip version check.");
+		return;
+	}
+	if(getCRC32("urlmon.dll")!="C62DCFF1")
+	{
+		print("ERROR","[UPDATE_CHECK]The crc32 of urlmon.dll is wrong! It's "+getCRC32("urlmon.dll")+" but it should be C62DCFF1.");
+		return;
+	}
+	if(getSHA1("urlmon.dll")!="314DA1DE7F818AB3ACF4B562CD54B56641D5F217")
+	{
+		print("ERROR","[UPDATE_CHECK]The sha1 of urlmon.dll is wrong! It's "+getSHA1("urlmon.dll")+" but it should be 314DA1DE7F818AB3ACF4B562CD54B56641D5F217.");
+		return;
+	}
+	urlmon_dll=LoadLibrary("urlmon.dll");
+	if(urlmon_dll==NULL)
+	{
+		FreeLibrary(urlmon_dll);
+		print("ERROR","[UPDATE_CHECK]Failed to link to urlmon.dll. Skip version check.");
+		return;
+	}
+	load_urlmon_dll_succeed=1;
+	DownloadFromURLToFile=(DownloadFunction)GetProcAddress(urlmon_dll,"URLDownloadToFileW");
+	if(DownloadFromURLToFile(NULL,update_path,L"version_check.cfg",0,NULL)!=S_OK)
+	{
+		print("ERROR","[UPDATE_CHECK]Download version_check.cfg failed. Skip version check.");
+		return;
+	}
+	update_config.clear();
+	update_config.read("version_check.cfg");
+	for(unsigned int i=0;i<update_config.size();i++)
+	{
+		if(update_config.get(i,CONFIGURATION_NAME)==VariableName(newest_version_id) && update_config.get(i,CONFIGURATION_TYPE)=="U")
+			newest_version_id=turn_unsigned_int(update_config.get(i,CONFIGURATION_VALUE));
+		if(update_config.get(i,CONFIGURATION_NAME)==VariableName(recommended_version_id) && update_config.get(i,CONFIGURATION_TYPE)=="U")
+			recommended_version_id=turn_unsigned_int(update_config.get(i,CONFIGURATION_VALUE));
+		if(update_config.get(i,CONFIGURATION_NAME)==VariableName(newest_version_url) && update_config.get(i,CONFIGURATION_TYPE)=="S")
+			newest_version_url=update_config.get(i,CONFIGURATION_VALUE);
+		if(update_config.get(i,CONFIGURATION_NAME)==VariableName(recommended_version_url) && update_config.get(i,CONFIGURATION_TYPE)=="S")
+			recommended_version_url=update_config.get(i,CONFIGURATION_VALUE);
+	}
+	print("INFO","[UPDATE_CHECK]Current version id is "+turn_string(VERSION_ID)+". Newest version id is "+turn_string(newest_version_id)+". Recommend version id is "+turn_string(recommended_version_id)+".");
+	unsigned int target_id=recommended_version_id;
+	string target_url_string=recommended_version_url;
+	if(version_use_newest)
+	{
+		target_id=newest_version_id;
+		target_url_string=newest_version_url;
+	}
+	print("DEBUG","[UPDATE_CHECK]Target version id is "+turn_string(target_id)+".");
+	if(target_url_string=="unknow")
+	{
+		print("ERROR","[UPDATE_CHECK]target_url get failed. Skip version update.");
+		return;
+	}
+	LPCWSTR target_url=turn_LPCWSTR(target_url_string);
+	if(target_id<VERSION_ID)
+	{
+		print("WARN","[UPDATE_CHECK]Now version is newer than target version. Skip version update.");
+		return;
+	}
+	if(target_id==VERSION_ID)
+	{
+		print("INFO","[UPDATE_CHECK]Now version is the target version. Skip version update.");
+		return;
+	}
+	print("INFO","Download update.zip.");
+	if(DownloadFromURLToFile(NULL,target_url,L"update.zip",0,NULL)!=S_OK)
+	{
+		print("ERROR","[UPDATE_CHECK]Download update.zip failed. Skip version update.");
+		return;
+	}
+	if(!file_exists("unzip.exe"))
+	{
+		print("WARN","[UPDATE_CHECK]Couldn't find unzip.exe. Try to download it.");
+		if(DownloadFromURLToFile(NULL,unzip_path,L"unzip.exe",0,NULL)!=S_OK)
+		{
+			print("ERROR","[UPDATE_CHECK]Download unzip.exe failed. Skip version update.");
+			return;
+		}
+	}
+	if(getCRC32("unzip.exe")!="004AE69D")
+	{
+		print("ERROR","[UPDATE_CHECK]The crc32 of unzip.exe is wrong! It's "+getCRC32("unzip.exe")+" but it should be 004AE69D. Try to download it.");
+		if(DownloadFromURLToFile(NULL,unzip_path,L"unzip.exe",0,NULL)!=S_OK)
+		{
+			print("ERROR","[UPDATE_CHECK]Download unzip.exe failed. Skip version update.");
+			return;
+		}
+	}
+	if(getSHA1("unzip.exe")!="A3E7BAF0557CB42D3D7668A73FC56C1F2AA23104")
+	{
+		print("ERROR","[UPDATE_CHECK]The sha1 of unzip.exe is wrong! It's "+getSHA1("unzip.exe")+" but it should be A3E7BAF0557CB42D3D7668A73FC56C1F2AA23104. Try to download it.");
+		if(DownloadFromURLToFile(NULL,unzip_path,L"unzip.exe",0,NULL)!=S_OK)
+		{
+			print("ERROR","[UPDATE_CHECK]Download unzip.exe failed. Skip version update.");
+			return;
+		}
+	}
+	print("INFO","Unzip update.zip to folder update.");
+	system("unzip.exe update.zip -d update");
+	print("INFO","Run update.bat.");
+	system("update.bat");
+	print("INFO","Run update.exe. Now exit this process.");
+	ShellExecute(NULL,"open","update\\update","","update",!disappear);
+	FreeLibrary(urlmon_dll);
+	EXITS=1;
+	return;
+}
+
+inline void CHECK_OTHER_RUNNING()
+{
+	if((file_exists("run_config.txt") || file_exists("temp.txt") || file_exists("disk_information.temp")) && process_exists(TEXT("AutoCopy"))!=0)
+	{
+		cout<<"There is some other run_config.txt or temp.txt or disk_information.temp in the run path."<<endl;
+		cout<<"Please make sure no AutoCopy.exe else on this path is running and then run clear.bat."<<endl;
+		cout<<"Enter any key to exit."<<endl;
+		MessageBox(NULL,TEXT("Please make sure no AutoCopy.exe else on this path is running and then run clear.bat."),TEXT("WARNING"),MB_OK|MB_ICONWARNING);
+		system("pause");
+		EXITS=1;
+		return;
+	}
+}
+
 inline void GET_HWNDDOS()
 {
 	print("INFO","[GET_HWNDDOS]Start to find hwndDOS.");
@@ -41,13 +188,13 @@ inline void GET_HWNDDOS()
 	SetLastError(0);
 	hwndDOS=NULL;
 	print("DEBUG","[GET_HWNDDOS]Changed hwndDOS to NULL.");
-	if(dis==1)
+	if(disappear==1)
 	{
 		print("FAULT","[GET_HWNDDOS/detected_run_configuration][hwndDOS] is NULL, process exits.");
 		EXITS=1;
 	}
 	else
-		print("WARN","[GET_HWNDDOS]Don't change [dis] to 1, or process will exit.");
+		print("ERROR","[GET_HWNDDOS]Don't change [disappear] to true in this run time, or process will exit.");
 	return;
 }
 
@@ -85,21 +232,21 @@ inline void GET_NUMBERS()
 
 inline void GET_TIMES()
 {
-	print("INFO","Start to read [times].");
+	print("INFO","[GET_TIMES]Start to read [times].");
 	if(input_is_u)
 	{
 		disk.set_path(input[0]);
-		print("DEBUG","The serial of the USB flash drive is "+disk.serial+".");
+		print("DEBUG","[GET_TIMES]The serial of the USB flash drive is "+disk.serial+".");
 		if(mapping[disk.serial]==0)
 		{
-			print("INFO","It is a new USB flash drive.");
+			print("INFO","[GET_TIMES]It is a new USB flash drive.");
 			mapping[disk.serial]=numbers;
 			times=numbers;
 			{
-				print("INFO","Update new mapping.txt");
+				print("INFO","[GET_TIMES]Update new mapping.txt");
 				FILE *fout=fopen((output+"\\mapping.txt").c_str(),"at");
 				if(fout==NULL)
-					print("ERROR","Open file failed.");
+					print("ERROR","[GET_TIMES]Open file failed.");
 				else
 				{
 					fprintf(fout,/*"%g %g\n"*/"%s %u\n",disk.serial.c_str(),times);
@@ -107,7 +254,7 @@ inline void GET_TIMES()
 				}
 			}
 			{
-				print("INFO","Write new AutoCopy.txt.");
+				print("INFO","[GET_TIMES]Write new AutoCopy.txt.");
 				ofstream fout((output+"\\AutoCopy.txt").c_str());
 				if(fout)
 				{
@@ -115,12 +262,12 @@ inline void GET_TIMES()
 					fout.close();
 				}
 				else
-					print("ERROR","Open file failed.");
+					print("ERROR","[GET_TIMES]Open file failed.");
 			}
 		}
 		else
 		{
-			print("INFO","It is an old USB flash drive.");
+			print("INFO","[GET_TIMES]It is an old USB flash drive.");
 			times=mapping[disk.serial];
 		}
 	}
@@ -169,10 +316,18 @@ inline void GET_TIMES()
 				fin.close();
 			}
 			else
-				print("ERROR","[GET_TIMES]Open file failed.");
+			{
+				print("ERROR","[GET_TIMES]Open file failed. Turn to "+turn_string(numbers)+".");
+				times=numbers++;
+			}
+			if(times<=0)
+			{
+				print("ERROR","[GET_TIMES][times] is wrong. It is "+turn_string(times)+". Turn to "+turn_string(numbers)+".");
+				times=numbers++;
+			}
 		}
 	print("INFO","[GET_TIMES]Process knew the [times]="+turn_string(times)+".");
-	vector<pair<string,pair<size_t,pair<string,string> > > >all_temp;
+	vector<pair<string,pair<pair<size_t,string>,string > > >all_temp;
 	all_temp.clear();
 	while(all.size()<=times)
 		all.push_back(all_temp);
@@ -183,13 +338,15 @@ inline void READ_CONFIG()
 {
 	print("INFO","[READ_CONFIG]Start to read configuration.");
 	config.clear();
-	if(!file_exists("config.txt") || !config.read())
+	if(!file_exists(config_path) || !config.read())
 	{
 		print("WARN","[READ_CONFIG]Can't find config.txt or read failed.");
 		config.add(VariableName(input),"复制文件的路径。如果USE_USB_SERIAL_INSTREAT_OF_TIMES为0，则程序会自动在input/ac/AutoCopy/This_folder.txt文件中保存[times]信息，请勿删除此文件！（默认隐藏+系统+只读）（请注意路径的合法性，必须使用绝对路径，末尾不带/或\\）","S",input);
 		config.add(VariableName(output),"输出文件的路径。会在output/AutoCopy.txt保存下一个新文件夹数。具体U盘文件会复制至output/[times]。（注意！！！此路径不能含有空格等字符，否则会出错，导致文件混乱，建议使用_字符或首字母大写代替。请注意路径的合法性，必须使用绝对路径，末尾不带/或\\）","S",output);
+		config.add(VariableName(version_use_newest),"自动更新版本的模式。（false：使用推荐版本；true：使用最新版本）","B",turn_string(version_use_newest));
 		config.add(VariableName(GET_hwndDOS_LEVEL),"获取hwndDOS（控制台句柄）的检查级别（此部分详见config说明.txt）","I",turn_string(GET_hwndDOS_LEVEL));
-		config.add(VariableName(dis),"程序运行时是否隐藏。（false：不隐藏；true：隐藏）","B",turn_string(dis));
+		config.add(VariableName(disappear),"程序运行时是否隐藏。（false：不隐藏；true：隐藏）","B",turn_string(disappear));
+		config.add(VariableName(LOG_LEVEL),"日志输出级别（仅限INFO/WARN/ERROR/DEBUG/FAULT/ALL），一般情况下，DEBUG和ALL的作用是一样的","S",LOG_LEVEL);
 		config.add(VariableName(MAX_CPU_USEAGE),"CPU占用最小值。当CPU占用率（百分制）大于MAX_CPU_USEAGE时，就会减少NOW_PTHREAD，即减少最多线程数，减缓复制速度，防止电脑过卡操作不流畅（最大值为100，最小值为0）","U",turn_string(MAX_CPU_USEAGE));
 		config.add(VariableName(MIN_CPU_USEAGE),"CPU占用最大值。当CPU占用率（百分制）小于MIN_CPU_USEAGE时，就会增大NOW_PTHREAD，即增加最多线程数，加快复制速度，尽可能使用CPU（最大值为100，最小值为0）","U",turn_string(MIN_CPU_USEAGE));
 		config.add(VariableName(MAX_PTHREAD),"最大线程数。NOW_PTHREAD的最大值不超过MAX_PTHREAD（最小值为NOW_PTHREAD）","U",turn_string(MAX_PTHREAD));
@@ -215,10 +372,14 @@ inline void READ_CONFIG()
 				input=config.get(i,CONFIGURATION_VALUE);
 			if(config.get(i,CONFIGURATION_NAME)==VariableName(output) && config.get(i,CONFIGURATION_TYPE)=="S")
 				output=config.get(i,CONFIGURATION_VALUE);
+			if(config.get(i,CONFIGURATION_NAME)==VariableName(version_use_newest) && config.get(i,CONFIGURATION_TYPE)=="B")
+				version_use_newest=turn_int(config.get(i,CONFIGURATION_VALUE));
 			if(config.get(i,CONFIGURATION_NAME)==VariableName(GET_hwndDOS_LEVEL) && config.get(i,CONFIGURATION_TYPE)=="I")
 				GET_hwndDOS_LEVEL=turn_int(config.get(i,CONFIGURATION_VALUE));
-			if(config.get(i,CONFIGURATION_NAME)==VariableName(dis) && config.get(i,CONFIGURATION_TYPE)=="B")
-				dis=turn_bool(config.get(i,CONFIGURATION_VALUE));
+			if(config.get(i,CONFIGURATION_NAME)==VariableName(disappear) && config.get(i,CONFIGURATION_TYPE)=="B")
+				disappear=turn_bool(config.get(i,CONFIGURATION_VALUE));
+			if(config.get(i,CONFIGURATION_NAME)==VariableName(LOG_LEVEL) && config.get(i,CONFIGURATION_TYPE)=="S")
+				LOG_LEVEL=turn_bool(config.get(i,CONFIGURATION_VALUE));
 			if(config.get(i,CONFIGURATION_NAME)==VariableName(MAX_CPU_USEAGE) && config.get(i,CONFIGURATION_TYPE)=="U")
 				MAX_CPU_USEAGE=turn_unsigned_long_long(config.get(i,CONFIGURATION_VALUE));
 			if(config.get(i,CONFIGURATION_NAME)==VariableName(MIN_CPU_USEAGE) && config.get(i,CONFIGURATION_TYPE)=="U")
@@ -242,6 +403,11 @@ inline void READ_CONFIG()
 			if(config.get(i,CONFIGURATION_NAME)==VariableName(COPY_MODE) && config.get(i,CONFIGURATION_TYPE)=="I")
 				COPY_MODE=turn_int(config.get(i,CONFIGURATION_VALUE));
 		}
+	}
+	if(LOG_LEVEL!="INFO" && LOG_LEVEL!="WARN" && LOG_LEVEL!="ERROR" && LOG_LEVEL!="DEBUG" && LOG_LEVEL!="FAULT" && LOG_LEVEL!="ALL")
+	{
+		LOG_LEVEL="ALL";
+		print("WARN","[READ_CONFIG][LOG_LEVEL] is illegal. Changing it to ALL");
 	}
 	if(MIN_CPU_USEAGE>MAX_CPU_USEAGE)
 	{
@@ -315,7 +481,7 @@ inline void READ_CONFIG()
 				" [GET_hwndDOS_LEVEL]="+turn_string(GET_hwndDOS_LEVEL)+
 				" [COPY_MODE]="+turn_string(COPY_MODE)+
 				" [SORT_LIST]="+turn_string(SORT_LIST)+
-				" [dis]="+turn_string(dis)+
+				" [disappear]="+turn_string(disappear)+
 				". Now rewriting it.");
 	if(!config.write())
 		print("ERROR","[READ_CONFIG]Can't rewrite the configuration.");
@@ -330,8 +496,7 @@ inline void READ_SAVED_FILES_LISTS()
 	{
 		print("INFO","[READ_SAVED_FILES_LISTS]Start to read saved_file_lists.");
 		all.clear();
-		copied.clear();
-		vector<pair<string,pair<size_t,pair<string,string> > > >temp;
+		vector<pair<string,pair<pair<size_t,string>,string> > >temp;
 		string in_temp;
 		for(unsigned int i=0;i<numbers;i++)
 		{
@@ -349,25 +514,38 @@ inline void READ_SAVED_FILES_LISTS()
 				all.push_back(temp);
 				continue;
 			}
-			fin>>in_temp;fin>>in_temp;unsigned int orders=turn_unsigned_int(in_temp);
-			for(unsigned int i=0;i<orders;i++)
+			fin>>in_temp;fin>>in_temp;//all
+			unsigned int orders=turn_unsigned_int(in_temp);
+			for(unsigned int j=0;j<orders;j++)
 			{
-				string md5,sha1,SIZE,name;
-				fin>>in_temp;fin>>in_temp;fin>>in_temp;fin>>md5;fin>>in_temp;fin>>sha1;fin>>in_temp;fin>>SIZE;fin>>in_temp;fin.get();fin.get();name.clear();
+				string md5,SIZE,time,path;
+				fin>>in_temp;fin>>in_temp;	//order
+				fin>>in_temp;fin>>md5;		//md5
+				fin>>in_temp;fin>>in_temp;	//time
+				time=in_temp;
+				for(unsigned int k=0;k<2;k++)
+				{
+					fin>>in_temp;
+					time+=" "+in_temp;
+				}
+				fin>>in_temp;fin>>SIZE;		//size
+				fin>>in_temp;fin.get();		//name
+				fin.get();					//"
+				path.clear();
 				char in_temp;
 				while(1)
 				{
 					in_temp=fin.get();
 					if(in_temp=='\n')
 						break;
-					name+=in_temp;
+					path+=in_temp;
 				}
-				name.erase(name.size()-1,1);
-				temp.push_back(make_pair(name,make_pair(turn_unsigned_int(SIZE),make_pair(md5,sha1))));
-				copied.insert(make_pair(make_pair(md5,sha1),1));
+				path.erase(path.size()-1,1);//"
+				temp.push_back(make_pair(path,make_pair(make_pair(turn_unsigned_int(SIZE),time),md5)));
 			}
 			fin.close();
 			all.push_back(temp);
+			print("DEBUG","[READ_SAVED_FILES_LISTS]Readed "+turn_string(i+1)+" file"+((i==0)?".":"s."));
 			Sleep(0);
 		}
 		print("INFO","[READ_SAVED_FILES_LISTS]Read saved_file_lists finished.");
@@ -411,9 +589,9 @@ inline void COMPAIE_FILES_LISTS()
 		need.clear();
 		need_f.clear();
 		pthread_compare_files_tids.Clear();
-		for(unsigned int k=0;k<getFiles_all.size();)
+		for(unsigned int k=0;k<files_all.size();)
 		{
-			while(pthread_compare_files_tids.length()<NOW_PTHREAD && k<getFiles_all.size())
+			while(pthread_compare_files_tids.length()<NOW_PTHREAD && k<files_all.size())
 			{
 				if(folder_exist(input,times))
 				{
@@ -476,7 +654,7 @@ inline void COPY_FILES_LISTS()
 		pthread_compare_files_tids.Clear();
 		for(unsigned int k=0;k<need.size();)
 		{
-			while(pthread_compare_files_tids.length()<NOW_PTHREAD && k<getFiles_all.size())
+			while(pthread_compare_files_tids.length()<NOW_PTHREAD && k<files_all.size())
 			{
 				if(folder_exist(input,times))
 				{
