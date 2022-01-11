@@ -2,8 +2,8 @@
 const string VERSION="1.0.1";
 const unsigned int VERSION_ID=10001;	//01 00 01
 
-const LPCWSTR update_path=L"";
-const LPCWSTR unzip_path=L"";
+const LPCWSTR update_path=L"https://raw.githubusercontent.com/xuxiaocheng0201/XuxiaochengsDataBase/main/AutoCopy/version_check.cfg";
+const LPCWSTR unzip_path=L"https://raw.githubusercontent.com/xuxiaocheng0201/AutoCopy/main/unzip.exe";
 
 unsigned int newest_version_id=VERSION_ID;
 string newest_version_url="unknow";
